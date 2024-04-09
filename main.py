@@ -28,12 +28,9 @@ def analyze_headers(url):
         if not check_dns_record("TXT", f"_dmarc.{domain}"):
             security_report.append(("DMARC запись", "Отсутствует", "Низкая", "Добавьте DMARC запись в настройки DNS вашего домена, чтобы помочь защититься от подделки электронной почты и фишинга."))
 
-        admin_response = requests.get(f"{url}/admin", timeout=5)
-        if admin_response.status_code == 200:
+        if requests.get(f"{url}/admin", timeout=5).status_code == 200:
             security_report.append(("Публичная страница администратора", "Доступна", "Высокая", "Ограничьте доступ к вашей странице администратора для конкретных IP-адресов и/или включите аутентификацию."))
-
-        dir_response = requests.get(f"{url}/test_non_existent_directory", timeout=5)
-        if "Index of" in dir_response.text:
+        if "Index of" in requests.get(f"{url}/test_non_existent_directory", timeout=5).text:
             security_report.append(("Отображение содержимого каталога", "Включено", "Средняя", "Отключите отображение содержимого каталога, чтобы предотвратить несанкционированный доступ к файлам и папкам вашего веб-сайта."))
 
         security_headers = [
@@ -43,7 +40,6 @@ def analyze_headers(url):
             ("X-XSS-Protection", "Установите заголовок 'X-XSS-Protection' в '1; mode=block', чтобы включить защиту от XSS в старых браузерах."),
             ("Strict-Transport-Security", "Реализуйте Strict Transport Security (HSTS), чтобы обеспечить безопасные соединения."),
         ]
-
         for header, fix in security_headers:
             if header not in headers:
                 security_report.append((header, "Отсутствует", "Средняя", fix))
@@ -57,7 +53,6 @@ def analyze_headers(url):
             ("X-Powered-By", "Удалите или обфусцируйте заголовок 'X-Powered-By', чтобы избежать раскрытия информации о технологическом стеке."),
             ("X-AspNet-Version", "Удалите или обфусцируйте заголовок 'X-AspNet-Version', чтобы избежать раскрытия информации о версии ASP.NET."),
         ]
-
         for header, fix in info_disclosure_headers:
             if header in headers:
                 security_report.append((header, f"Значение: {headers[header]}", "Низкая", fix))
@@ -70,10 +65,6 @@ def analyze_headers(url):
         x_content_type_options = headers.get("X-Content-Type-Options", "")
         if content_type.startswith("text/html") and x_content_type_options != "nosniff":
             security_report.append(("Content-Type/X-Content-Type-Options", "Небезопасное", "Средняя", "Установите заголовок 'X-Content-Type-Options' в 'nosniff' при предоставлении HTML-контента, чтобы предотвратить анализ типов MIME."))
-
-        cache_control = headers.get("Cache-Control", "")
-        if "no-store" not in cache_control.lower() or "private" not in cache_control.lower():
-            security_report.append(("Cache-Control", "Небезопасное", "Средняя", "Установите 'Cache-Control' заголовок в 'no-store, private' для чувствительных ресурсов, чтобы предотвратить кэширование."))
 
         return security_report
 
